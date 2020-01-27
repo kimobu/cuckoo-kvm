@@ -1,0 +1,14 @@
+[Unit]
+Description=Cuckoo Web
+After=syslog.target network.target cuckoo.service
+
+[Service]
+Type=simple
+User=cuckoo
+WorkingDirectory=/home/cuckoo
+Restart=on-failure
+ExecStart=/home/cuckoo/cuckoo-venv/bin/python /home/cuckoo/cuckoo-venv/bin/cuckoo web runserver 0.0.0.0:8000
+ExecStop=/usr/bin/pkill -f 'cuckoo web runserver'
+
+[Install]
+WantedBy=multi-user.target

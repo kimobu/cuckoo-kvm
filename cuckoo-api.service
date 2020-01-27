@@ -1,0 +1,14 @@
+[Unit]
+Description=Cuckoo API
+After=syslog.target network.target mongod.service cuckoo.service
+
+[Service]
+Type=simple
+User=cuckoo
+WorkingDirectory=/home/cuckoo
+Restart=on-failure
+ExecStart=/home/cuckoo/cuckoo-venv/bin/python /home/cuckoo/cuckoo-venv/bin/cuckoo api --host 0.0.0.0 --port 8090
+ExecStop=/usr/bin/killall cuckoo
+
+[Install]
+WantedBy=multi-user.target

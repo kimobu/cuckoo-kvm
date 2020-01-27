@@ -1,0 +1,155 @@
+<domain type='kvm' id='5'>
+  <name>Windows7Sandbox-test</name>
+  <uuid>3a041447-9ec6-4d6c-9831-c848f7456698</uuid>
+  <memory unit='KiB'>1953792</memory>
+  <currentMemory unit='KiB'>1953792</currentMemory>
+  <vcpu placement='static'>2</vcpu>
+  <resource>
+    <partition>/machine</partition>
+  </resource>
+  <os>
+    <type arch='x86_64' machine='pc-i440fx-bionic'>hvm</type>
+    <boot dev='cdrom'/>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <hyperv>
+      <relaxed state='on'/>
+      <vapic state='on'/>
+      <spinlocks state='on' retries='8191'/>
+    </hyperv>
+  </features>
+  <cpu mode='custom' match='exact' check='full'>
+    <model fallback='forbid'>Broadwell-noTSX-IBRS</model>
+    <feature policy='require' name='vme'/>
+    <feature policy='require' name='f16c'/>
+    <feature policy='require' name='rdrand'/>
+    <feature policy='require' name='hypervisor'/>
+    <feature policy='require' name='arat'/>
+    <feature policy='require' name='xsaveopt'/>
+    <feature policy='require' name='abm'/>
+  </cpu>
+  <clock offset='localtime'>
+    <timer name='rtc' tickpolicy='catchup'/>
+    <timer name='pit' tickpolicy='delay'/>
+    <timer name='hpet' present='no'/>
+    <timer name='hypervclock' present='yes'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>destroy</on_reboot>
+  <on_crash>destroy</on_crash>
+  <pm>
+    <suspend-to-mem enabled='no'/>
+    <suspend-to-disk enabled='no'/>
+  </pm>
+  <devices>
+    <emulator>/usr/bin/kvm</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/mnt/datastore/vm/Windows7Sandbox/disk1.qcow2-test'/>
+      <backingStore/>
+      <target dev='vda' bus='virtio'/>
+      <alias name='virtio-disk0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
+    </disk>
+    <disk type='file' device='floppy'>
+      <driver name='qemu' type='raw'/>
+      <source file='/mnt/datastore/iso/c8648303-5b5b-4aa2-b434-20885025b9ae/images/11111111-1111-1111-1111-111111111111/virtio-win_amd64.vfd'/>
+      <backingStore/>
+      <target dev='fda' bus='fdc'/>
+      <alias name='fdc0-0-0'/>
+      <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='/mnt/datastore/iso/c8648303-5b5b-4aa2-b434-20885025b9ae/images/11111111-1111-1111-1111-111111111111/Windows7Ultimate64.iso'/>
+      <backingStore/>
+      <target dev='hda' bus='ide'/>
+      <readonly/>
+      <alias name='ide0-0-0'/>
+      <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+    </disk>
+    <controller type='usb' index='0' model='ich9-ehci1'>
+      <alias name='usb'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x7'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci1'>
+      <alias name='usb'/>
+      <master startport='0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0' multifunction='on'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci2'>
+      <alias name='usb'/>
+      <master startport='2'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x1'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci3'>
+      <alias name='usb'/>
+      <master startport='4'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x2'/>
+    </controller>
+    <controller type='pci' index='0' model='pci-root'>
+      <alias name='pci.0'/>
+    </controller>
+    <controller type='fdc' index='0'>
+      <alias name='fdc0'/>
+    </controller>
+    <controller type='ide' index='0'>
+      <alias name='ide'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
+    </controller>
+    <interface type='network'>
+      <mac address='52:54:00:f2:c8:2a'/>
+      <source network='default' bridge='virbr0'/>
+      <target dev='vnet0'/>
+      <model type='virtio'/>
+      <alias name='net0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>
+    <serial type='pty'>
+      <source path='/dev/pts/5'/>
+      <target type='isa-serial' port='0'>
+        <model name='isa-serial'/>
+      </target>
+      <alias name='serial0'/>
+    </serial>
+    <console type='pty' tty='/dev/pts/5'>
+      <source path='/dev/pts/5'/>
+      <target type='serial' port='0'/>
+      <alias name='serial0'/>
+    </console>
+    <input type='tablet' bus='usb'>
+      <alias name='input0'/>
+      <address type='usb' bus='0' port='1'/>
+    </input>
+    <input type='mouse' bus='ps2'>
+      <alias name='input1'/>
+    </input>
+    <input type='keyboard' bus='ps2'>
+      <alias name='input2'/>
+    </input>
+    <graphics type='vnc' port='5900' autoport='yes' listen='0.0.0.0'>
+      <listen type='address' address='0.0.0.0'/>
+    </graphics>
+    <video>
+      <model type='vga' vram='16384' heads='1' primary='yes'/>
+      <alias name='video0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+    </video>
+    <memballoon model='virtio'>
+      <alias name='balloon0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
+    </memballoon>
+  </devices>
+  <seclabel type='dynamic' model='apparmor' relabel='yes'>
+    <label>libvirt-3a041447-9ec6-4d6c-9831-c848f7456698</label>
+    <imagelabel>libvirt-3a041447-9ec6-4d6c-9831-c848f7456698</imagelabel>
+  </seclabel>
+  <seclabel type='dynamic' model='dac' relabel='yes'>
+    <label>+64055:+113</label>
+    <imagelabel>+64055:+113</imagelabel>
+  </seclabel>
+</domain>
+

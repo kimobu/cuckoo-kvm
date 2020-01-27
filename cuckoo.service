@@ -1,0 +1,14 @@
+[Unit]
+Description=Cuckoo Engine
+After=syslog.target network.target mongod.service
+
+[Service]
+Type=simple
+User=cuckoo
+WorkingDirectory=/home/cuckoo
+Restart=on-failure
+ExecStart=/home/cuckoo/cuckoo-venv/bin/python /home/cuckoo/cuckoo-venv/bin/cuckoo
+ExecStop=/usr/bin/killall cuckoo
+
+[Install]
+WantedBy=multi-user.target
