@@ -15,4 +15,4 @@ First, you should view and edit the Windows7Sandbox.xml file. A KVM domain (Virt
 
 Next, review cuckoo-install.sh. This script will install software, create a VM, and start cuckoo services. Check the variables towards the topand make sure the URLs and paths line up to what you want.
 
-Use cuckoo-install.sh to install dependencies and Cuckoo. The script will define a sandbox VM based off the provided XML file, and pause so that you have time to configure the sandbox. See [the documentat](https://cuckoo.sh/docs/installation/guest/index.html).
+Use cuckoo-install.sh to install dependencies and Cuckoo. The script will define a sandbox VM based off the provided XML file, and pause so that you have time to configure the sandbox. See [the documentation](https://cuckoo.sh/docs/installation/guest/index.html).
