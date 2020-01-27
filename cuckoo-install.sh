@@ -40,6 +40,7 @@ DISKPATH="/mnt/datastore/vm/Windows7Sandbox/disk1.qcow2"
 ISOPATH="/mnt/datastore/iso/c8648303-5b5b-4aa2-b434-20885025b9ae/images/11111111-1111-1111-1111-111111111111/"
 CDROM="Windows7Ultimate64.iso"
 VIRTIO="virtio-win_amd64.vfd"
+DISKSIZE="80G"
 
 LOG=$(mktemp)
 UPGRADE=true
@@ -184,6 +185,7 @@ install_packages(){
     $SUDO apt install -y ${packages["${RELEASE}"]}
     $SUDO apt install -y $CUSTOM_PKGS
     $SUDO apt -y install 
+    $SUDO wget -O $ISOPATH$VIRTIO https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win_amd64.vfd
     return 0
 }
 
@@ -205,44 +207,33 @@ run_cuckoo_community(){
     runuser -l $CUCKOO_USER -c 'cuckoo community'
     return 0
 }
-
-create_virt_vm(){
+create_virt_disk() {
 	if [ ! -f $DISKPATH ]; then
-		qemu-img create -f qcow2 $DISKPATH 80G
+		qemu-img create -f qcow2 $DISKPATH $DISKSIZE
 	fi
-	virt-install --name="$VMNAME-test" --os-type=windows --os-variant win7 --network network=default,model=virtio --disk path=$DISKPATH-test,format=qcow2,device=disk,bus=virtio --cdrom $ISOPATH$CDROM --disk path=$ISOPATH$VIRTIO,device=floppy --graphics vnc,listen=0.0.0.0 --ram=1024 --vcpus 2 &
-
+}
+create_virt_vm(){
+	virsh create --file Windows7Sandbox.xml
 }
 
-
-create_cuckoo_startup_scripts(){
-    $SUDO rm /root/cuckoo-start.sh
-    $SUDO rm /root/cuckoo-kill.sh
-    $SUDO echo "#!/bin/bash" >> /root/cuckoo-start.sh
-    $SUDO echo "# Cuckoo run script" >> /root/cuckoo-start.sh
-    $SUDO echo "#!/bin/bash" >> /root/cuckoo-kill.sh
-    $SUDO echo "# Cuckoo run script" >> /root/cuckoo-kill.sh
-    $SUDO echo "killall cuckoo" >> /root/cuckoo-start.sh
-    $SUDO echo "pkill -f 'cuckoo web runserver'" >> /root/cuckoo-start.sh
-
-    $SUDO echo "vboxmanage dhcpserver modify --ifname $VIRTUALBOX_INT_NAME --disable" >> /root/cuckoo-start.sh
-    $SUDO echo "vboxmanage hostonlyif ipconfig $VIRTUALBOX_INT_NAME --ip $VIRTUALBOX_INT_ADDR --netmask $VIRTUALBOX_INT_SUBNET" >> /root/cuckoo-start.sh
-    $SUDO echo "iptables -A FORWARD -o $INTERNET_INT_NAME -i $VIRTUALBOX_INT_NAME -s $VIRTUALBOX_INT_NETWORK -m conntrack --ctstate NEW -j ACCEPT" >> /root/cuckoo-start.sh
-    $SUDO echo "iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT" >> /root/cuckoo-start.sh
-    $SUDO echo "iptables -A POSTROUTING -t nat -j MASQUERADE" >> /root/cuckoo-start.sh
-    $SUDO echo "sysctl -w net.ipv4.ip_forward=1" >> /root/cuckoo-start.sh
-
-    $SUDO echo "killall cuckoo" >> /root/cuckoo-kill.sh
-    $SUDO echo "pkill -f 'cuckoo web runserver'" >> /root/cuckoo-kill.sh
-    $SUDO echo "runuser -l cuckoo -c 'cuckoo' &" >> /root/cuckoo-start.sh
-    $SUDO echo "runuser -l cuckoo -c 'cuckoo web runserver 0.0.0.0:8000' &" >> /root/cuckoo-start.sh
-    $SUDO echo "runuser -l cuckoo -c 'cuckoo api --host 0.0.0.0 --port 8090' &" >> /root/cuckoo-start.sh
-    $SUDO sed -i "/# By default this script does nothing./ { N; s/# By default this script does nothing./&\n\/root\/cuckoo-start.sh\n/ }" /etc/rc.local
-
-    $SUDO chmod +x /root/cuckoo-start.sh
-    $SUDO chmod +x /root/cuckoo-kill.sh
+create_virt_snapshot(){
+	virsh snapshot-create-as --domain $VMNAME --name "$(date +%Y%m%d)" --description "Snapshot created by cuckoo-install.sh"
 }
 
+create_cuckoo_startup_scripts() {
+	$SUDO cp *.service /etc/systemd/system
+	$SUDO systemctl daemon-reload
+}
+start_cuckoo() {
+	$SUDO systemctl start mongod
+	$SUDO systemctl start cuckoo
+	$SUDO systemctl start cuckoo-web
+	$SUDO systemctl start cuckoo-api
+	$SUDO systemctl enable mongod
+	$SUDO systemctl enable cuckoo
+	$SUDO systemctl enable cuckoo-web
+	$SUDO systemctl enable cuckoo-api
+}
 # Init.
 
 print_copy
@@ -256,38 +247,44 @@ source config &>/dev/null
 echo "Logging enabled on ${LOG}"
 
 # Install packages
-#run_and_log install_packages "Installing packages ${CUSTOM_PKGS} and ${packages[$RELEASE]}" "Something failed installing packages, please look at the log file"
+run_and_log install_packages "[+] Installing packages ${CUSTOM_PKGS} and ${packages[$RELEASE]}" "[ ] Something failed installing packages, please look at the log file"
 
 # Create user and clone repos
-# Not creating a user; ubuntu requires a non-root user already
-# run_and_log create_cuckoo_user "Creating cuckoo user" "Could not create cuckoo user"
-#run_and_log clone_repos "Cloning repositories" "Could not clone repos"
+# Add the user to libvirt group
+USER=$(whoami)
+$SUDO usermod -aG libvirt $USER
+run_and_log clone_repos "[+] Cloning repositories" "[-] Could not clone repos"
 
 # Install python packages
-#run_and_log install_python2_packages "Installing python2 packages: ${python_packages}" "Something failed install python packages, please look at the log file"
-#run_and_log install_python3_packages "Installing python3 packages: ${python_packages}" "Something failed install python packages, please look at the log file"
+run_and_log install_python2_packages "Installing python2 packages: ${python_packages}" "Something failed install python packages, please look at the log file"
+run_and_log install_python3_packages "Installing python3 packages: ${python_packages}" "Something failed install python packages, please look at the log file"
 
 # Install volatility
 if [ ! -f /usr/local/bin/volatility ]; then
 	run_and_log build_volatility "Installing volatility"
 else
-	echo "Found volality, not installing"
+	echo "[x] Found volality, not installing"
 fi
 
-run_and_log create_virt_vm "libvirt VM created" "failed to create the VM"
-# Networking (latest, because sometimes it crashes...)
-#run_and_log create_hostonly_iface "Creating hostonly interface for cuckoo"
-#run_and_log allow_tcpdump "Allowing tcpdump for normal users"
+run_and_log create_virt_disk "[+] QEMU disk created" "[-]failed to create the VM"
+run_and_log create_virt_vm "[+] VM made You should now VNC into the VM and set it up" "[-] failed to create the VM"
+echo "Once your VM is ready for snapshot, press Enter. Things to do: "
+echo "   1. Installed"
+echo "   2. Configured (software, UAC off, admin logged in, cuckoo agent installed and running"
+echo "   3. Still powered on"
+read cont
+run_and_log create_virt_snapshot "[+] Snapshot made" "[-] Snapshot failed. Fix any problems and take one yourself with virsh create-snapshot"
+run_and_log poweroff_vm "[+] VM turned off" "[ ] Couldn't turn VM off. Use virsh list $VMNAME to see its status"
+run_and_log allow_tcpdump "Allowing tcpdump for normal users"
 
 # Preparing VirtualBox VM
-#run_and_log import_virtualbox_vm "Importing specified VirtualBoxVM"
-#run_and_log launch_virtualbox_vm "Launching imported VM"
-#sleep 60
-#run_and_log create_virtualbox_vm_snapshot "Creating snapshot 'Clean'"
-#run_and_log poweroff_virtualbox_vm
 
 # Configuring Cuckoo
 run_and_log run_cuckoo_community "Downloading community rules"
 run_and_log update_cuckoo_config "Updating Cuckoo config files"
 run_and_log create_cuckoo_startup_scripts "Creating Cuckoo startup scripts"
-
+run_and_log start_cuckoo "Creating Cuckoo startup scripts"
+echo "All done! Browse to your Cuckoo host and try submitting files"
+echo "If stuff isn't working write, stop the Cuckoo services"
+echo "   go to your Cuckoo Working Directory, and start"
+echo "   Cuckoo yourself with 'cuckoo -d' for debug messages"
