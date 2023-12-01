@@ -185,7 +185,7 @@ install_packages(){
     $SUDO apt install -y ${packages["${RELEASE}"]}
     $SUDO apt install -y $CUSTOM_PKGS
     $SUDO apt -y install 
-    $SUDO wget -O $ISOPATH$VIRTIO https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win_amd64.vfd
+    $SUDO wget -O $ISOPATH$VIRTIO https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.141-1/virtio-win_amd64.vfd
     return 0
 }
 
